@@ -1,30 +1,20 @@
-version: '3.8'
-
 services:
-  # Backend NestJS Service
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     ports:
       - "4000:4000"
+    volumes:
+      - sqlite_data:/app/data
     environment:
       - PORT=4000
-    volumes:
-      # Persist SQLite database on host machine so data isn't lost on restart
-      - sqlite_data:/app/database.sqlite
 
-  # Frontend Next.js Service
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     ports:
       - "3000:3000"
     environment:
+      - PORT=3000
       - NEXT_PUBLIC_API_URL=http://localhost:4000
-    depends_on:
-      - backend
 
 volumes:
   sqlite_data:

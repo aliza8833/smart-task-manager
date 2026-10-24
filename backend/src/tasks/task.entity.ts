@@ -1,6 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+// backend/src/tasks/task.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
 import { Category } from '../categories/category.entity';
-import { User } from '../users/user.entity'; // <--- Import User
+import { User } from '../users/user.entity';
+import { Subtask } from './subtask.entity'; // <-- Add this import
 
 @Entity('tasks')
 export class Task {
@@ -10,18 +12,22 @@ export class Task {
   @Column()
   title: string;
 
+  @Column({ default: false })
+  is_completed: boolean;
+
   @Column({ default: 'Medium' })
   priority: string;
 
   @Column({ nullable: true })
   dueDate: string;
 
-  @Column({ default: false })
-  is_completed: boolean;
-
-  @ManyToOne(() => Category, (category) => category.tasks, { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => Category, (category) => category.tasks, { nullable: true, eager: true })
   category: Category;
 
   @ManyToOne(() => User, (user) => user.tasks, { onDelete: 'CASCADE' })
-  user: User; // <--- Links task to its owner
+  user: User;
+
+  // ---> ADD THIS LINE BELOW <---
+  @OneToMany(() => Subtask, (subtask) => subtask.task, { cascade: true, eager: true })
+  subtasks: Subtask[];
 }

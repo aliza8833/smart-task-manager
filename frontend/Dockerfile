@@ -1,19 +1,23 @@
-# Use Node 20 alpine for building
+# Stage 1: Build the app
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm install
 COPY . .
 RUN npm run build
 
-# Production image
-FROM node:20-alpine
+# Stage 2: Production image
+FROM node:20-alpine AS runner
 WORKDIR /app
+ENV NODE_ENV=production
 COPY package*.json ./
-RUN npm install --production
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm install --production
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["npm", "run", "start"]

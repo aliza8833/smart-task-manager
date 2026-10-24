@@ -1,9 +1,9 @@
+// backend/src/tasks/tasks.controller.ts
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-// Defines the shape of the request object after JWT validation
 interface RequestWithUser extends Request {
   user: {
     userId: number;
@@ -34,5 +34,22 @@ export class TasksController {
   @Delete(':id')
   async remove(@Req() req: RequestWithUser, @Param('id') id: string) {
     return this.tasksService.remove(req.user.userId, Number(id));
+  }
+
+  // --- Subtask Endpoints ---
+
+  @Post(':id/subtasks')
+  async addSubtask(@Param('id') taskId: string, @Body('title') title: string) {
+    return this.tasksService.addSubtask(Number(taskId), title);
+  }
+
+  @Patch('subtasks/:subtaskId/toggle')
+  async toggleSubtask(@Param('subtaskId') subtaskId: string) {
+    return this.tasksService.toggleSubtask(Number(subtaskId));
+  }
+
+  @Delete('subtasks/:subtaskId')
+  async deleteSubtask(@Param('subtaskId') subtaskId: string) {
+    return this.tasksService.deleteSubtask(Number(subtaskId));
   }
 }

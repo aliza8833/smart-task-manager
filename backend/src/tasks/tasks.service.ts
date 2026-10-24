@@ -1,7 +1,9 @@
+// backend/src/tasks/tasks.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import { Task } from './task.entity';
+import { Subtask } from './subtask.entity';
 import { Category } from '../categories/category.entity';
 import { User } from '../users/user.entity';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -11,11 +13,12 @@ export class TasksService {
   constructor(
     @InjectRepository(Task)
     private readonly taskRepository: Repository<Task>,
+    @InjectRepository(Subtask)
+    private readonly subtaskRepository: Repository<Subtask>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
   ) {}
 
-  // Only fetch tasks belonging to this specific user ID
   async findAll(userId: number, search?: string, status?: string): Promise<Task[]> {
     const where: FindOptionsWhere<Task> = { user: { id: userId } };
 
@@ -31,12 +34,11 @@ export class TasksService {
 
     return this.taskRepository.find({
       where,
-      relations: { category: true },
+      relations: { category: true, subtasks: true },
       order: { dueDate: 'ASC', id: 'DESC' },
     });
   }
 
-  // Link the new task to the logged-in user
   async create(userId: number, createTaskDto: CreateTaskDto): Promise<Task> {
     let categoryEntity: Category | undefined = undefined;
 
@@ -55,14 +57,21 @@ export class TasksService {
       priority: createTaskDto.priority,
       dueDate: createTaskDto.dueDate,
       category: categoryEntity,
-      user: { id: userId } as User, // <--- Assign user relation
+      user: { id: userId } as User,
     });
 
-    return this.taskRepository.save(task);
+    const savedTask = await this.taskRepository.save(task);
+    return this.taskRepository.findOne({
+      where: { id: savedTask.id },
+      relations: { category: true, subtasks: true },
+    }) as Promise<Task>;
   }
 
   async toggle(userId: number, id: number): Promise<Task> {
-    const task = await this.taskRepository.findOne({ where: { id, user: { id: userId } } });
+    const task = await this.taskRepository.findOne({
+      where: { id, user: { id: userId } },
+      relations: { category: true, subtasks: true },
+    });
     if (!task) throw new NotFoundException('Task not found');
     task.is_completed = !task.is_completed;
     return this.taskRepository.save(task);
@@ -72,5 +81,33 @@ export class TasksService {
     const task = await this.taskRepository.findOne({ where: { id, user: { id: userId } } });
     if (!task) throw new NotFoundException('Task not found');
     await this.taskRepository.delete(id);
+  }
+
+  // --- Subtask Methods ---
+
+  async addSubtask(taskId: number, title: string): Promise<Subtask> {
+    const task = await this.taskRepository.findOne({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Task not found');
+
+    const subtask = this.subtaskRepository.create({
+      title,
+      task,
+    });
+    return this.subtaskRepository.save(subtask);
+  }
+
+  async toggleSubtask(subtaskId: number): Promise<Subtask> {
+    const subtask = await this.subtaskRepository.findOne({ where: { id: subtaskId } });
+    if (!subtask) throw new NotFoundException('Subtask not found');
+
+    subtask.is_completed = !subtask.is_completed;
+    return this.subtaskRepository.save(subtask);
+  }
+
+  async deleteSubtask(subtaskId: number): Promise<void> {
+    const subtask = await this.subtaskRepository.findOne({ where: { id: subtaskId } });
+    if (!subtask) throw new NotFoundException('Subtask not found');
+
+    await this.subtaskRepository.delete(subtaskId);
   }
 }

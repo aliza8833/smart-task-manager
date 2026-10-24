@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Add this line right here for Tailwind v4 Dark Mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
